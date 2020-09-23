@@ -24,6 +24,19 @@ export TLS_VERIFY=${TLS_VERIFY:-"may"}
 export DOLLAR='$'
 envsubst < /root/conf/postfix-main.cf > /etc/postfix/main.cf
 
+# Rewrite sender address
+[ -n "$REWRITE_SENDER" ] && {
+	cat <<EOF>>/etc/postfix/main.cf
+sender_canonical_classes = envelope_sender, header_sender
+sender_canonical_maps =  regexp:/etc/postfix/sender_canonical_maps
+smtp_header_checks = regexp:/etc/postfix/header_check
+EOF
+	echo "/.+/    $REWRITE_SENDER" > /etc/postfix/sender_canonical_maps
+	echo "/^From\:.*$/ REPLACE From: $REWRITE_SENDER" > /etc/postfix/header_check
+	postmap /etc/postfix/sender_canonical_maps
+	postmap /etc/postfix/header_check
+}
+
 # Generate default alias DB
 newaliases
 
